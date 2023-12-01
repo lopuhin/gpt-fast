@@ -4,12 +4,6 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 import torch
-import os, sys
-lm_evaluation_harness_path = "/".join(
-    os.getcwd().split("/")[:-1] + ["lm-evaluation-harness"]
-)
-sys.path.insert(0, lm_evaluation_harness_path)
-import main as lm_evaluation_harness_main
 
 import torch.fx as fx
 import torch.nn as nn
@@ -17,12 +11,13 @@ import torch.nn.functional as F
 from torch.utils._pytree import tree_flatten, tree_unflatten
 
 from eval import setup_cache_padded_seq_input_pos_max_seq_length_for_prefill
-from generate import encode_tokens
 
 aten = torch.ops.aten
 
 try:
-    import lm_eval
+    import lm_eval.base
+    import lm_eval.tasks
+    import lm_eval.evaluator
     class InputRecorder(lm_eval.base.BaseLM):
         """
         This is a fake evaluation wrapper that just records the inputs
@@ -88,8 +83,9 @@ try:
             return self._device
 
         def tok_encode(self, string: str):
+            from generate import encode_tokens
             encoded = encode_tokens(
-                self._tokenizer, string, bos=True, eos=False, device=self._device
+                self._tokenizer, string, bos=True, device=self._device
             )
             # encoded is a pytorch tensor, but some internal logic in the
             # eval harness expects it to be a list instead

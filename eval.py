@@ -22,24 +22,10 @@ torch._dynamo.config.cache_size_limit = 100000
 wd = Path(__file__).parent.parent.resolve()
 sys.path.append(str(wd))
 
-from model import LLaMA
+from model import Transformer as LLaMA
 from sentencepiece import SentencePieceProcessor
 
-# hacky path setup for lm-evaluation-harness
-import os
-import sys
-lm_evaluation_harness_path = '/'.join(
-    os.getcwd().split('/')[:-1] + ['lm-evaluation-harness'])
-sys.path.insert(0, lm_evaluation_harness_path)
-import main as lm_evaluation_harness_main
-import lm_eval
-
-from generate import (
-    _load_model,
-    encode_tokens,
-    model_forward,
-)
-
+import lm_eval.base
 
 def setup_cache_padded_seq_input_pos_max_seq_length_for_prefill(
     model: LLaMA,
@@ -116,6 +102,7 @@ class SimpleGPTEvalWrapper(lm_eval.base.BaseLM):
         return self._device
 
     def tok_encode(self, string: str):
+        from generate import encode_tokens
         encoded = encode_tokens(self._tokenizer,
             string, bos=True, eos=False, device=self._device)
         # encoded is a pytorch tensor, but some internal logic in the
@@ -130,6 +117,8 @@ class SimpleGPTEvalWrapper(lm_eval.base.BaseLM):
 
     def _model_call(self, inps):
         # TODO: make batches work
+        from generate import model_forward
+
         inps = inps.squeeze(0)
 
         max_new_tokens = 1
@@ -205,6 +194,7 @@ def main(
         max_seq_length (Optional[int]): The maximum sequence length allowed for input text.
 
     """
+    from generate import _load_model, model_forward
 
     assert checkpoint_path.is_file(), checkpoint_path
 
