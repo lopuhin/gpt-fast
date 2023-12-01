@@ -20,7 +20,7 @@ from sentencepiece import SentencePieceProcessor
 
 try:
     from GPTQ import GenericGPTQRunner, InputRecorder, lm_eval
-except:
+except Exception:
     pass
 
 from model import Transformer
@@ -517,6 +517,7 @@ class WeightOnlyInt4Linear(torch.nn.Module):
 
 def quantize(
     checkpoint_path: Path = Path("checkpoints/meta-llama/Llama-2-7b-chat-hf/model.pth"),
+    model_name: str = None,
     mode: str = 'int8',
     # following arguments only available when setting int4 quantization.
     groupsize: int = 128,
@@ -538,7 +539,7 @@ def quantize(
     t0 = time.time()
 
     with torch.device('meta'):
-        model = Transformer.from_name(checkpoint_path.parent.name)
+        model = Transformer.from_name(model_name or checkpoint_path.parent.name)
 
     checkpoint = torch.load(str(checkpoint_path), mmap=True, weights_only=True)
     model.load_state_dict(checkpoint, assign=True)
@@ -598,6 +599,7 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description='Quantize a model.')
     parser.add_argument('--checkpoint_path', type=Path, default=Path("checkpoints/meta-llama/Llama-2-7b-chat-hf/model.pth"), help='Path to the model checkpoint to be quantized.')
+    parser.add_argument('--model_name')
     parser.add_argument('--mode', '-q', type=str, default='int8', choices=['int8', 'int4', 'int4-gptq'], help='type of quantization to perform')
     parser.add_argument('--groupsize', type=int, default=32, help='Group size for int4 quantization.')
     parser.add_argument('--calibration_tasks', type=str, nargs='+', default=['hellaswag'], help='tasks to do gptq calibration on, if doing gptq')
@@ -609,4 +611,4 @@ if __name__ == '__main__':
     parser.add_argument('--label', type=str, default='_', help='label to add to output filename')
 
     args = parser.parse_args()
-    quantize(args.checkpoint_path, args.mode, args.groupsize, args.calibration_tasks, args.calibration_limit, args.calibration_seq_length, args.pad_calibration_inputs, args.percdamp, args.blocksize, args.label)
+    quantize(args.checkpoint_path, args.model_name, args.mode, args.groupsize, args.calibration_tasks, args.calibration_limit, args.calibration_seq_length, args.pad_calibration_inputs, args.percdamp, args.blocksize, args.label)
